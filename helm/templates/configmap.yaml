@@ -1,0 +1,251 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: subquery-project
+  labels:
+    app.kubernetes.io/service: subquery
+    {{- include "x.labels" . | nindent 4 }}
+data:
+  project_init.yaml: |
+      specVersion: 1.0.0
+      version: 0.1.0
+      name: infinity-swap-indexer
+      description: This is a SubQuery project that indexes the Infinity Swap protocol.
+      runner:
+        node:
+          name: "@subql/node-cosmos"
+          version: ">=3.1.1"
+        query:
+          name: "@subql/query"
+          version: "*"
+      schema:
+        file: ./schema.graphql
+      network:
+        chainId: {{ .Values.subquery.chainId }}
+        endpoint:
+          - {{ .Values.subquery.archiveEndpoint }}
+        chaintypes:
+          cosmos.base.v1beta1.coin:
+            file: ./proto/cosmos/base/v1beta1/coin.proto
+            messages:
+              - Coin
+          cosmwasm.wasm.v1.tx:
+            file: ./proto/cosmwasm/wasm/v1/tx.proto
+            messages:
+              - MsgInstantiateContract
+              - MsgExecuteContract
+              - MsgInstantiateContract2
+              - MsgMigrateContract
+      dataSources:
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.startBlock }}
+          endBlock: {{ .Values.subquery.startBlock }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/MessageHandler
+                handler: infinityBuilderInstantiateMsg
+                filter:
+                  type: /cosmwasm.wasm.v1.MsgInstantiateContract
+                  values:
+                    label: Infinity Builder
+              - kind: cosmos/MessageHandler
+                handler: infinityBuilderInstantiate2Msg
+                filter:
+                  type: /cosmwasm.wasm.v1.MsgInstantiateContract2
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.startBlock }}
+          endBlock: {{ .Values.subquery.targetBlock }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/EventHandler
+                handler: infinityContractMigrateEvent
+                filter:
+                  type: wasm-migrate
+              - kind: cosmos/EventHandler
+                handler: infinityGlobalUpdateConfigEvent
+                filter:
+                  type: wasm-sudo-update-config
+              - kind: cosmos/EventHandler
+                handler: infinityPairCreatePairEvent
+                filter:
+                  type: wasm-create-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairDepositTokensEvent
+                filter:
+                  type: wasm-deposit-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairWithdrawTokensEvent
+                filter:
+                  type: wasm-withdraw-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairUpdatePairEvent
+                filter:
+                  type: wasm-update-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairSwapNftForTokensEvent
+                filter:
+                  type: wasm-swap-nft-for-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairSwapTokensForNftEvent
+                filter:
+                  type: wasm-swap-tokens-for-nft
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.startBlock }}
+          endBlock: {{ .Values.subquery.pairMigrationHeight }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/EventHandler
+                handler: infinityPairDepositNftEvent
+                filter:
+                  type: wasm-deposit-nft
+              - kind: cosmos/EventHandler
+                handler: infinityPairWithdrawNftEvent
+                filter:
+                  type: wasm-withdraw-nft
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.factoryMigrationHeight }}
+          endBlock: {{ .Values.subquery.targetBlock }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/EventHandler
+                handler: infinityFactoryCreatePairEvent
+                filter:
+                  type: wasm-factory-create-pair
+              - kind: cosmos/EventHandler
+                handler: infinityFactoryCreatePair2Event
+                filter:
+                  type: wasm-factory-create-pair2
+              - kind: cosmos/EventHandler
+                handler: infinityPairMigratePairEvent
+                filter:
+                  type: wasm-migrate-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairDepositNftsEvent
+                filter:
+                  type: wasm-deposit-nfts
+              - kind: cosmos/EventHandler
+                handler: infinityPairWithdrawNftsEvent
+                filter:
+                  type: wasm-withdraw-nfts
+              - kind: cosmos/EventHandler
+                handler: infinityPairPairInternalEvent
+                filter:
+                  type: wasm-pair-internal
+              - kind: cosmos/EventHandler
+                handler: infinityRouterSwapNftsForTokensEvent
+                filter:
+                  type: wasm-router-swap-nfts-for-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityRouterSwapTokensForNftsEvent
+                filter:
+                  type: wasm-router-swap-tokens-for-nfts
+
+  project.yaml: |
+      specVersion: 1.0.0
+      version: 0.1.0
+      name: infinity-swap-indexer
+      description: This is a SubQuery project that indexes the Infinity Swap protocol.
+      runner:
+        node:
+          name: "@subql/node-cosmos"
+          version: ">=3.1.1"
+        query:
+          name: "@subql/query"
+          version: "*"
+      schema:
+        file: ./schema.graphql
+      network:
+        chainId: {{ .Values.subquery.chainId }}
+        endpoint:
+          - - {{ .Values.subquery.endpoint }}
+        chaintypes:
+          cosmos.base.v1beta1.coin:
+            file: ./proto/cosmos/base/v1beta1/coin.proto
+            messages:
+              - Coin
+          cosmwasm.wasm.v1.tx:
+            file: ./proto/cosmwasm/wasm/v1/tx.proto
+            messages:
+              - MsgInstantiateContract
+              - MsgExecuteContract
+              - MsgInstantiateContract2
+              - MsgMigrateContract
+      dataSources:
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.targetBlock }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/EventHandler
+                handler: infinityContractMigrateEvent
+                filter:
+                  type: wasm-migrate
+              - kind: cosmos/EventHandler
+                handler: infinityGlobalUpdateConfigEvent
+                filter:
+                  type: wasm-sudo-update-config
+              - kind: cosmos/EventHandler
+                handler: infinityPairCreatePairEvent
+                filter:
+                  type: wasm-create-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairDepositTokensEvent
+                filter:
+                  type: wasm-deposit-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairWithdrawTokensEvent
+                filter:
+                  type: wasm-withdraw-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairUpdatePairEvent
+                filter:
+                  type: wasm-update-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairSwapNftForTokensEvent
+                filter:
+                  type: wasm-swap-nft-for-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityPairSwapTokensForNftEvent
+                filter:
+                  type: wasm-swap-tokens-for-nft
+        - kind: cosmos/Runtime
+          startBlock: {{ .Values.subquery.targetBlock }}
+          mapping:
+            file: ./dist/index.js
+            handlers:
+              - kind: cosmos/EventHandler
+                handler: infinityFactoryCreatePairEvent
+                filter:
+                  type: wasm-factory-create-pair
+              - kind: cosmos/EventHandler
+                handler: infinityFactoryCreatePair2Event
+                filter:
+                  type: wasm-factory-create-pair2
+              - kind: cosmos/EventHandler
+                handler: infinityPairMigratePairEvent
+                filter:
+                  type: wasm-migrate-pair
+              - kind: cosmos/EventHandler
+                handler: infinityPairDepositNftsEvent
+                filter:
+                  type: wasm-deposit-nfts
+              - kind: cosmos/EventHandler
+                handler: infinityPairWithdrawNftsEvent
+                filter:
+                  type: wasm-withdraw-nfts
+              - kind: cosmos/EventHandler
+                handler: infinityPairPairInternalEvent
+                filter:
+                  type: wasm-pair-internal
+              - kind: cosmos/EventHandler
+                handler: infinityRouterSwapNftsForTokensEvent
+                filter:
+                  type: wasm-router-swap-nfts-for-tokens
+              - kind: cosmos/EventHandler
+                handler: infinityRouterSwapTokensForNftsEvent
+                filter:
+                  type: wasm-router-swap-tokens-for-nfts

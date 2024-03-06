@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: graphql-service
+  name: graphql
   labels:
     app.kubernetes.io/service: graphql
     {{- include "x.labels" . | nindent 4 }}
@@ -17,7 +17,7 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: graphql-engine
+  name: graphql
   labels:
     app.kubernetes.io/service: graphql
     {{- include "x.labels" . | nindent 4 }}
@@ -40,19 +40,19 @@ spec:
             - sh
             - -c
             - |
-              until wget --spider --timeout=30 http://subquery-service:3000/ready; do
-                echo "waiting for subquery-service to be ready";
+              until wget --spider --timeout=30 http://subquery:3000/ready; do
+                echo "waiting for subquery to be ready";
                 sleep 4;
               done;
       containers:
-        - name: graphql-engine
-          image: onfinality/subql-query:latest
+        - name: graphql
+          image: {{ .Values.graphql.image }}
           ports:
             - containerPort: 3000
           args:
             - "--name=app"
             - "--playground"
-            - "--indexer=http://subquery-service:3000"
+            - "--indexer=http://subquery:3000"
           env:
             - name: DB_USER
               value: "postgres"
@@ -64,6 +64,6 @@ spec:
             - name: DB_DATABASE
               value: "postgres"
             - name: DB_HOST
-              value: "infinity-indexer-elgafar-postgresql"
+              value: "{{ .Release.Name }}-postgresql"
             - name: DB_PORT
               value: "5432"
