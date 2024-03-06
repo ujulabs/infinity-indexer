@@ -1,0 +1,52 @@
+{
+  "name": "@uju-labs/infinity-indexer",
+  "version": "0.1.0",
+  "description": "This project serves as the indexing solution for the Infinity Swap protocol.",
+  "author": "Tasio Victoria",
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "schema.graphql"
+  ],
+  "scripts": {
+    "init": "json2yaml ./src/project/baseProject.json > ./project.yaml",
+    "set-project": "bun ./src/project/set-project",
+    "codegen": "subql codegen",
+    "lint": "eslint .",
+    "build": "subql build",
+    "test:subquery": "subql-node-cosmos test --log-level debug",
+    "test": "./scripts/test.sh",
+    "docker:pull": "docker compose --profile localnet pull",
+    "docker:start": "docker compose --profile localnet up --remove-orphans -d",
+    "docker:stop": "docker compose --profile localnet down",
+    "dev:logs": "docker logs --follow infinity-swap-indexer-subquery-node-1",
+    "dev:start": "bun run set-project -- localnet && bun run docker:pull && bun run docker:start",
+    "dev:stop": "bun run docker:stop && rm -rf .data",
+    "deploy": "./scripts/deploy.sh"
+  },
+  "dependencies": {
+    "@cosmjs/stargate": "^0.32.2",
+    "@cosmjs/tendermint-rpc": "^0.31.3",
+    "@subql/cli": "latest",
+    "@subql/node-cosmos": "latest",
+    "@subql/testing": "latest",
+    "@uju-labs/eslint-config-custom": "workspace:*",
+    "@uju-labs/infinity-swap-client": "workspace:*",
+    "lodash": "^4.17.21",
+    "pako": "^2.1.0",
+    "pino": "^7.8.0",
+    "semver": "^7.5.4",
+    "ts-proto": "^1.112.1",
+    "tslib": "^2.3.1",
+    "typescript": "5.1.6",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@subql/types-core": "latest",
+    "@subql/types-cosmos": "latest",
+    "@types/semver": "^7.5.6",
+    "@typescript-eslint/parser": "^5.0.1",
+    "bun-types": "^1.0.7",
+    "json2yaml": "^1.1.0"
+  }
+}

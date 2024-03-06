@@ -1,0 +1,174 @@
+# To improve query performance, we strongly suggest adding indexes to any field that you plan to filter or sort by
+# Add the `@index` or `@index(unique: true)` annotation after any non-key field
+# https://academy.subquery.network/build/graphql.html#indexing-by-non-primary-key-field
+
+#  ID, Int, String, BigInt, Float, Date, Boolean, <EntityName>, JSON, and <EnumName>.
+
+type GlobalConfig @entity {
+  id: ID! # "1"
+  pairCreationFeeAmount: BigInt!
+  pairCreationFeeDenom: String!
+
+  fairBurnFeePercent: Float!
+  defaultRoyaltyFeePercent: Float!
+  maxRoyaltyFeePercent: Float!
+  maxSwapFeePercent: Float!
+
+  infinityPairCodeId: Int!
+
+  # Addresses
+  fairBurnAddress: String!
+  royaltyRegistryAddress: String!
+  marketplaceAddress: String!
+  infinityGlobalAddress: String!
+  infinityFactoryAddress: String!
+  infinityIndexAddress: String!
+  infinityRouterAddress: String!
+}
+
+type MinPrice @entity {
+  id: ID! # denom
+  amount: BigInt!
+  globalConfig: GlobalConfig!
+}
+
+type Contract @entity {
+  id: ID! # {address}-{codeId}
+  blockHeight: Int!
+  created: Date!
+
+  address: String! @index
+  codeId: Int!
+  name: String! @index
+  version: String!
+}
+
+enum PairType {
+  Token
+  Nft
+  Trade
+}
+
+enum BondingCurve {
+  Linear
+  Exponential
+  ConstantProduct
+}
+
+type Pair @entity {
+  id: ID! # address
+  blockHeight: Int!
+  created: Date! @index
+
+  # Immutable
+  collection: String! @index
+  owner: String! @index
+  denom: String!
+
+  # Config
+  pairType: PairType!
+  swapFeePercent: Float
+  reinvestTokens: Boolean
+  reinvestNfts: Boolean
+  bondingCurve: BondingCurve!
+  spotPrice: BigInt
+  linearDelta: BigInt
+  exponentialDelta: Float
+  isActive: Boolean!
+  assetRecipient: String
+
+  # Internal
+  totalNfts: Int!
+  totalTokens: BigInt!
+  sellToPairQuote: BigInt @index
+  buyFromPairQuote: BigInt @index
+
+  # Relations
+  nftDeposits: [NftDeposit!]! @derivedFrom(field: "pair")
+  pairEvents: [PairEvent!]! @derivedFrom(field: "pair")
+  # swapEvents: [SwapEvent!]! @derivedFrom(field: "pair")
+}
+
+type NftDeposit @entity {
+  id: ID! # {collection}-{tokenId}
+  collection: String! @index
+  tokenId: String!
+  pair: Pair! @index
+}
+
+type EventAttribute @jsonField {
+  key: String!
+  value: String!
+}
+
+type PairEvent
+  @entity
+  @compositeIndexes(fields: [["blockHeight", "eventIdx", "internalIdx"]]) {
+  id: ID! # {blockheight}-{eventIdx}-{internalIdx}
+  blockHeight: Int!
+  eventIdx: Int!
+  internalIdx: Int!
+
+  created: Date!
+
+  type: String! @index
+  attributes: [EventAttribute]!
+
+  pair: Pair! @index
+}
+
+enum SwapType {
+  NftForTokens
+  TokensForNft
+}
+
+type Swap @entity {
+  id: ID! # {txHash}-{collection}-{type}
+  txHash: String!
+  collection: String!
+  type: SwapType!
+
+  created: Date! @index
+  senderRecipient: String @index
+
+  swapItems: [SwapItem!]! @derivedFrom(field: "swap")
+}
+
+type SwapItem
+  @entity
+  @compositeIndexes(fields: [["blockHeight", "eventIdx", "internalIdx"]]) {
+  id: ID! # {blockheight}-{eventIdx}-{internalIdx}
+  blockHeight: Int!
+  eventIdx: Int!
+  internalIdx: Int!
+
+  tokenId: String!
+  fairBurnFee: BigInt!
+  royaltyFee: BigInt!
+  swapFee: BigInt!
+  sellerAmount: BigInt!
+  totalAmount: BigInt!
+
+  pair: Pair! @index
+  swap: Swap @index
+}
+
+type RouterSwap
+  @entity
+  @compositeIndexes(fields: [["blockHeight", "eventIdx", "internalIdx"]]) {
+  id: ID! # {blockheight}-{eventIdx}-{internalIdx}
+  blockHeight: Int!
+  eventIdx: Int!
+  internalIdx: Int!
+
+  created: Date!
+
+  type: SwapType!
+
+  collection: String! @index
+  denom: String!
+  senderRecipient: String! @index
+
+  numSwaps: Int!
+  volume: BigInt!
+}

@@ -1,0 +1,20 @@
+# Env
+.env.qa
+.env.secure
+
+# Typescript
+node_modules
+.turbo
+dist
+src/types
+src/tests
+
+# Ansible
+ansible/playbooks/captured_variables
+
+# Subquery
+project.yaml
+.data
+
+# Misc
+.DS_Store

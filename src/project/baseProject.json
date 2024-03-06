@@ -1,0 +1,24 @@
+{
+  "specVersion": "1.0.0",
+  "version": "0.1.0",
+  "name": "infinity-swap-indexer",
+  "description": "This is a SubQuery project that indexes the Infinity Swap protocol.",
+  "runner": {
+    "node": {
+      "name": "@subql/node-cosmos",
+      "version": ">=3.1.1"
+    },
+    "query": {
+      "name": "@subql/query",
+      "version": "*"
+    }
+  },
+  "schema": {
+    "file": "./schema.graphql"
+  },
+  "network": {
+    "chainId": "testing",
+    "endpoint": ["http://stargaze:26657"]
+  },
+  "dataSources": []
+}

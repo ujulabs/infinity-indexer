@@ -1,0 +1,161 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: subquery-service
+  labels:
+    app.kubernetes.io/service: subquery
+    {{- include "x.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/service: subquery
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: subquery-project
+  labels:
+    app.kubernetes.io/service: subquery
+    {{- include "x.labels" . | nindent 4 }}
+data:
+  project_init.yaml: |
+  {{ .Values.subquery.config.project_init | toYaml | indent 2 | replace "|" "" }}
+  
+  project.yaml: |
+  {{ .Values.subquery.config.project | toYaml | indent 2 | replace "|" "" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: subquery-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/service: subquery
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/service: subquery
+        {{- include "x.labels" . | nindent 8 }}
+    spec:
+      imagePullSecrets:
+        - name: ghcr-credentials
+      volumes:
+        - name: shared-data
+          emptyDir: {}
+        - name: subquery-project
+          configMap:
+            name: subquery-project
+            items:
+              - key: 'project_init.yaml'
+                path: 'project_init.yaml'
+              - key: 'project.yaml'
+                path: 'project.yaml'
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z infinity-indexer-elgafar-postgresql 5432; do
+                echo "waiting for postgres to be ready";
+                sleep 4;
+              done;
+        - name: subquery-pre
+          image: ghcr.io/tasiov/uju-sphere:v0.1.8-elgafar
+          command:
+            - '/bin/sh'
+            - '-c'
+            - 'cp -R /app/* /project && cp /config/project_init.yaml /project/project.yaml'
+          volumeMounts:
+            - name: subquery-project
+              mountPath: '/config'
+            - name: shared-data
+              mountPath: /project
+        # - name: subquery-init
+        #   image: 'ghcr.io/tasiov/uju-sphere:v0.1.8-elgafar'
+        #   ports:
+        #     - containerPort: 3000
+        #   args:
+        #     - '-f=/project'
+        #     - '--db-schema=app'
+        #     - '--workers=4'
+        #     - '--batch-size=30'
+        #     - '--unsafe'
+        #   env:
+        #     - name: DB_USER
+        #       value: 'postgres'
+        #     - name: DB_PASS
+        #       valueFrom:
+        #         secretKeyRef:
+        #           name: {{ template "x.fullname" . }}-postgresql
+        #           key: postgres-password
+        #     - name: DB_DATABASE
+        #       value: 'postgres'
+        #     - name: DB_HOST
+        #       value: 'infinity-indexer-elgafar-postgresql'
+        #     - name: DB_PORT
+        #       value: '5432'
+        #   volumeMounts:
+        #     - name: shared-data
+        #       mountPath: /project
+        - name: subquery-post
+          image: ghcr.io/tasiov/uju-sphere:v0.1.8-elgafar
+          command: ['cp', '/config/project.yaml', '/project/project.yaml']
+          volumeMounts:
+            - name: subquery-project
+              mountPath: '/config'
+            - name: shared-data
+              mountPath: /project
+      containers:
+        - name: subquery
+          image: 'ghcr.io/tasiov/uju-sphere:v0.1.8-elgafar'
+          ports:
+            - containerPort: 3000
+          args:
+            - '-f=/project'
+            - '--db-schema=app'
+            - '--workers=4'
+            - '--batch-size=30'
+            - '--unsafe'
+          env:
+            - name: DB_USER
+              value: 'postgres'
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "x.fullname" . }}-postgresql
+                  key: postgres-password
+            - name: DB_DATABASE
+              value: 'postgres'
+            - name: DB_HOST
+              value: 'infinity-indexer-elgafar-postgresql'
+            - name: DB_PORT
+              value: '5432'
+          volumeMounts:
+            - name: shared-data
+              mountPath: /project
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: subquery-metrics
+  labels:
+    app.kubernetes.io/service: prometheus
+    {{- include "x.labels" . | nindent 4 }}
+namespace: elgafar
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/service: subquery
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+  - targetPort: 3000
+    path: /metrics

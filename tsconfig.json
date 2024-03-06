@@ -1,0 +1,12 @@
+{
+  "extends": "@uju-labs/tsconfig/common.json",
+  "compilerOptions": {
+    "resolveJsonModule": true,
+  },
+  "include": [
+    "src/**/*.ts",
+    "node_modules/@subql/types-core/dist/global.d.ts",
+    "node_modules/@subql/types-cosmos/dist/global.d.ts",
+  ],
+  "exclude": ["node_modules", "tests", "dist"],
+}

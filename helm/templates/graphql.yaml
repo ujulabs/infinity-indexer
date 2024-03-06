@@ -1,0 +1,69 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: graphql-service
+  labels:
+    app.kubernetes.io/service: graphql
+    {{- include "x.labels" . | nindent 4 }}
+spec:
+  selector:
+    app.kubernetes.io/service: graphql
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: graphql-engine
+  labels:
+    app.kubernetes.io/service: graphql
+    {{- include "x.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/service: graphql
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/service: graphql
+        {{- include "x.labels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: wait-for-subquery
+          image: busybox
+          command:
+            - sh
+            - -c
+            - |
+              until wget --spider --timeout=30 http://subquery-service:3000/ready; do
+                echo "waiting for subquery-service to be ready";
+                sleep 4;
+              done;
+      containers:
+        - name: graphql-engine
+          image: onfinality/subql-query:latest
+          ports:
+            - containerPort: 3000
+          args:
+            - "--name=app"
+            - "--playground"
+            - "--indexer=http://subquery-service:3000"
+          env:
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ template "x.fullname" . }}-postgresql
+                  key: postgres-password
+            - name: DB_DATABASE
+              value: "postgres"
+            - name: DB_HOST
+              value: "infinity-indexer-elgafar-postgresql"
+            - name: DB_PORT
+              value: "5432"
