@@ -1,0 +1,6 @@
+subquery:
+  chainId: 'elgafar-1'
+  endpoint: https://rpc.elgafar-1.stargaze-apis.com
+  startBlock: 7055291
+  factoryMigrationHeight: 7880903
+  pairMigrationHeight: 7880987

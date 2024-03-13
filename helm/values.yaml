@@ -1,22 +1,29 @@
 postgresql:
   global:
-    storageClass: longhorn
+    storageClass: longhorn-single
   primary:
     initdb:
       scripts:
         00_init_extensions.sql: |
           CREATE EXTENSION IF NOT EXISTS btree_gist;
+
 subquery:
   image: ghcr.io/ujulabs/infinity-indexer:latest
   imagePullSecret: ghcr-credentials
   chainId: 'stargaze-1'
-  archiveEndpoint: https://rpc.full-nodes.stargaze-1.stargaze.build
-  endpoint: https://rpc.stargaze-apis.com/
+  endpoint: https://rpc.full-nodes.stargaze-1.stargaze.build
   startBlock: 10327462
   factoryMigrationHeight: 11669168
   pairMigrationHeight: 11669303
-  targetBlock: 11669303
+  workers: 8
   createServicePod: true
+  resources:
+    requests:
+      cpu: 1000m
+      memory: 4000Mi
+    limits:
+      cpu: 4000m
+      memory: 16000Mi
 
 graphql:
   image: onfinality/subql-query:latest

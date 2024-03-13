@@ -39,8 +39,6 @@ spec:
           configMap:
             name: subquery-project
             items:
-              - key: 'project_init.yaml'
-                path: 'project_init.yaml'
               - key: 'project.yaml'
                 path: 'project.yaml'
       initContainers:
@@ -54,47 +52,12 @@ spec:
                 echo "waiting for postgres to be ready";
                 sleep 4;
               done;
-        - name: subquery-init-pre
+        - name: subquery-pre
           image: {{ .Values.subquery.image }}
           command:
             - '/bin/sh'
             - '-c'
-            - 'cp -R /app/* /project && cp /config/project_init.yaml /project/project.yaml'
-          volumeMounts:
-            - name: subquery-project
-              mountPath: '/config'
-            - name: shared-data
-              mountPath: /project
-        - name: subquery-init
-          image: {{ .Values.subquery.image }}
-          ports:
-            - containerPort: 3000
-          args:
-            - '-f=/project'
-            - '--db-schema=app'
-            - '--workers=4'
-            - '--batch-size=30'
-            - '--unsafe'
-          env:
-            - name: DB_USER
-              value: 'postgres'
-            - name: DB_PASS
-              valueFrom:
-                secretKeyRef:
-                  name: {{ template "x.fullname" . }}-postgresql
-                  key: postgres-password
-            - name: DB_DATABASE
-              value: 'postgres'
-            - name: DB_HOST
-              value: '{{ .Release.Name }}-postgresql'
-            - name: DB_PORT
-              value: '5432'
-          volumeMounts:
-            - name: shared-data
-              mountPath: /project
-        - name: subquery-init-post
-          image: {{ .Values.subquery.image }}
-          command: ['cp', '/config/project.yaml', '/project/project.yaml']
+            - 'cp -R /app/* /project && cp /config/project.yaml /project/project.yaml'
           volumeMounts:
             - name: subquery-project
               mountPath: '/config'
@@ -108,7 +71,7 @@ spec:
           args:
             - '-f=/project'
             - '--db-schema=app'
-            - '--workers=4'
+            - '--workers={{ .Values.subquery.workers }}'
             - '--batch-size=30'
             - '--unsafe'
           env:
@@ -128,6 +91,13 @@ spec:
           volumeMounts:
             - name: shared-data
               mountPath: /project
+          resources:
+            requests:
+              cpu: {{ .Values.subquery.resources.requests.cpu }}    
+              memory: {{ .Values.subquery.resources.requests.memory }}    
+            limits:
+              cpu: {{ .Values.subquery.resources.limits.cpu }}    
+              memory: {{ .Values.subquery.resources.limits.memory }}    
 ---
 {{- if .Values.subquery.createServicePod }}
 apiVersion: monitoring.coreos.com/v1
