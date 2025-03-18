@@ -15,14 +15,16 @@
     "lint": "eslint .",
     "build": "subql build",
     "test:subquery": "subql-node-cosmos test --log-level debug",
-    "test": "./scripts/test.sh",
+
     "docker:pull": "docker compose --profile localnet pull",
     "docker:start": "docker compose --profile localnet up --remove-orphans -d",
     "docker:stop": "docker compose --profile localnet down",
     "dev:logs": "docker logs --follow infinity-swap-indexer-subquery-node-1",
     "dev:start": "bun run set-project -- localnet && bun run docker:pull && bun run docker:start",
     "dev:stop": "bun run docker:stop && rm -rf .data",
-    "deploy": "./scripts/deploy.sh"
+    "docker:build-local": "bun run set-project -- localnet && bun run codegen && bun run build && ./scripts/docker_build_arm.sh",
+    "docker:build-elgafar": "bun run set-project -- elgafar && bun run codegen && bun run build && ./scripts/docker_build_amd.sh",
+    "docker:build-stargaze": "bun run set-project -- stargaze && bun run codegen && bun run build && ./scripts/docker_build_amd.sh"
   },
   "dependencies": {
     "@cosmjs/stargate": "^0.32.2",
@@ -30,8 +32,7 @@
     "@subql/cli": "latest",
     "@subql/node-cosmos": "latest",
     "@subql/testing": "latest",
-    "@uju-labs/eslint-config-custom": "workspace:*",
-    "@uju-labs/infinity-swap-client": "workspace:*",
+    "@uju-labs/infinity-swap-client": "0.2.1",
     "lodash": "^4.17.21",
     "pako": "^2.1.0",
     "pino": "^7.8.0",

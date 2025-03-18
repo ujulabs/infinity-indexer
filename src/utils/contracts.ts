@@ -1,39 +1,48 @@
-import type { CosmosMessage } from '@subql/types-cosmos'
-import _ from 'lodash'
-import semver from 'semver'
-import { Contract } from '../types'
-import { blockTimeToDate } from './date'
-import { type SanitizedEvent, sanitizeEvents } from './events'
-import type { ChildLogger } from './handler'
-import { addressesFromEvents } from './pair'
+import type { CosmosMessage } from "@subql/types-cosmos"
+import _ from "lodash"
+import semver from "semver"
+import { Contract } from "../types"
+import { blockTimeToDate } from "./date"
+import { type SanitizedEvent, sanitizeEvents } from "./events"
+import type { ChildLogger } from "./handler"
+import { addressesFromEvents } from "./pair"
 
 export const latestContractByName = async (
-  name: string,
+  name: string
 ): Promise<Contract | undefined> => {
-  const contracts = await Contract.getByFields([['name', '=', name]])
+  const contracts = await Contract.getByFields([["name", "=", name]], {
+    limit: 1,
+    orderBy: "created",
+    orderDirection: "DESC"
+  })
   if (contracts.length === 0) {
     return undefined
   }
-  return _.sortBy(contracts, 'created')[contracts.length - 1]
+  return _.sortBy(contracts, "created")[contracts.length - 1]
 }
 
 export const latestContractByAddress = async (
-  contractAddress: string,
+  contractAddress: string
 ): Promise<Contract | undefined> => {
-  const contracts = await Contract.getByFields([
-    ['address', '=', contractAddress],
-  ])
+  const contracts = await Contract.getByFields(
+    [["address", "=", contractAddress]],
+    {
+      limit: 1,
+      orderBy: "created",
+      orderDirection: "DESC"
+    }
+  )
   if (contracts.length === 0) {
     return undefined
   }
-  return _.sortBy(contracts, 'created')[contracts.length - 1]
+  return _.sortBy(contracts, "created")[contracts.length - 1]
 }
 
 export const dbContractsFromEvents = async (
-  events: SanitizedEvent[],
+  events: SanitizedEvent[]
 ): Promise<Record<string, Contract | undefined>> => {
   const fetchContractPromise = async (
-    address: string,
+    address: string
   ): Promise<[string, Contract | undefined]> => {
     return [address, await latestContractByAddress(address)]
   }
@@ -47,7 +56,7 @@ export const dbContractsFromEvents = async (
       accum[address] = contract
       return accum
     },
-    {},
+    {}
   )
   return contractMap
 }
@@ -62,12 +71,12 @@ export const expectContract = async (name: string): Promise<Contract> => {
 
 export const expectContractGteVersion = async (
   name: string,
-  version: string,
+  version: string
 ): Promise<Contract> => {
   const contract = await expectContract(name)
   if (semver.gte(contract.version, version)) {
     throw new Error(
-      `Contract ${name} is not at version ${version} or greater, skipping`,
+      `Contract ${name} is not at version ${version} or greater, skipping`
     )
   }
   return contract
@@ -76,37 +85,37 @@ export const expectContractGteVersion = async (
 export const createdContractsFromEvents = (
   blockHeight: number,
   created: Date,
-  sanitizedEvents: SanitizedEvent[],
+  sanitizedEvents: SanitizedEvent[]
 ): Contract[] => {
   const nativeInstantiateEvents = _.filter(
     sanitizedEvents,
-    (event) => event.type === 'instantiate',
+    (event) => event.type === "instantiate"
   )
 
   const codeIdMap = _.reduce(
     nativeInstantiateEvents,
     (accum: Record<string, number>, event) => {
       const { contractAddress, codeId } = event.expectUniqueKeys([
-        'contractAddress',
-        'codeId',
+        "contractAddress",
+        "codeId"
       ])
       accum[contractAddress] = parseInt(codeId, 10)
       return accum
     },
-    {},
+    {}
   )
 
   const wasmInstantiateEvents = _.filter(
     sanitizedEvents,
-    (event) => event.getUniqueKey('action') === 'instantiate',
+    (event) => event.getUniqueKey("action") === "instantiate"
   )
 
   const dbContracts = _.map(wasmInstantiateEvents, (event) => {
     const { contractAddress, contractName, contractVersion } =
       event.expectUniqueKeys([
-        'contractAddress',
-        'contractName',
-        'contractVersion',
+        "contractAddress",
+        "contractName",
+        "contractVersion"
       ])
 
     const codeId = codeIdMap[contractAddress]
@@ -118,7 +127,7 @@ export const createdContractsFromEvents = (
       address: contractAddress,
       codeId,
       name: contractName,
-      version: contractVersion,
+      version: contractVersion
     })
   })
 
